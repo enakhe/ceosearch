@@ -5,12 +5,6 @@ import re
 # Load the spaCy model
 nlp = spacy.load("en_core_web_sm")
 
-# Google Custom Search API credentials
-api_key = 'AIzaSyCCA_9NsoTy82n8qk1--5fYAH8_zXHsIpM'
-search_engine_id = '3088e01757ce14d6f'
-counter = 0
-
-
 # Function to extract emails from a given text
 def extract_emails(text):
     # Regular expression for extracting email addresses
@@ -34,7 +28,7 @@ def get_domain_from_email(email):
 
 
 # Function to search for CEO using Google Custom Search API
-def search_ceo_google(domain):
+def search_ceo_google(domain, api_key, search_engine_id):
     search_url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={search_engine_id}&q=CEO+of+{domain}"
     response = requests.get(search_url)
     if response.status_code == 200:
@@ -55,24 +49,58 @@ def format_output(ceo_name, entry):
     return f"{ceo_name}\n{entry}\n\n"
 
 
+# Function to read API keys and search engine IDs from file
+def read_api_keys(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+
+    # Split the lines into pairs
+    pairs = [(lines[i].strip(), lines[i + 1].strip()) for i in range(0, len(lines), 2)]
+    return pairs
+
+
 # Example usage
 file_path = 'entry.txt'
 output_file = 'output.txt'
+api_keys_file = 'api_keys.txt'
+counter = 0
 
 # Extract entries from file
 entries = extract_entries_from_file(file_path)
+
+# Read API keys and search engine IDs
+api_pairs = read_api_keys(api_keys_file)
+
+# Initialize search count and API pair index
+search_count = 0
+api_pair_index = 0
 
 # Open output file for writing
 with open(output_file, 'w') as file_out:
     # Iterate over each entry
     for entry in entries:
+        counter += 1
         emails = extract_emails(entry)
         if emails:
             domain = get_domain_from_email(emails[0])
-            ceo_name = search_ceo_google(domain)
+
+            # Check if we need to switch to the next API pair
+            if search_count >= 100:
+                search_count = 0
+                api_pair_index += 1
+                if api_pair_index >= len(api_pairs):
+                    print("Exhausted all API keys and search engine IDs.")
+                    break
+
+            # Get the current API key and search engine ID
+            api_key, search_engine_id = api_pairs[api_pair_index]
+
+            # Search for the CEO using the current API key and search engine ID
+            ceo_name = search_ceo_google(domain, api_key, search_engine_id)
             formatted_entry = format_output(ceo_name, entry)
             file_out.write(formatted_entry)
-            counter += 1
 
+            # Increment the search count
+            search_count += 1
 
 print(counter)
