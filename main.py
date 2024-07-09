@@ -7,25 +7,20 @@ nlp = spacy.load("en_core_web_sm")
 
 # Function to extract emails from a given text
 def extract_emails(text):
-    # Regular expression for extracting email addresses
     email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
     return re.findall(email_pattern, text)
 
-
 # Function to extract entries from file
 def extract_entries_from_file(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
-
     # Split content by double newlines (assuming each entry is separated by double newlines)
     entries = content.split('\n')
     return entries
 
-
 # Function to extract domain from email
 def get_domain_from_email(email):
     return email.split('@')[1]
-
 
 # Function to search for CEO using Google Custom Search API
 def search_ceo_google(domain, api_key, search_engine_id):
@@ -43,27 +38,48 @@ def search_ceo_google(domain, api_key, search_engine_id):
                         return ent.text
     return "No information found"
 
+# Function to clean entry, ensuring only the first and last name before the email
+def clean_entry(entry):
+    words = entry.split()
+    for i, word in enumerate(words):
+        if '@' in word:
+            email_index = i
+            break
+    # Extract the first name, last name, and email
+    first_name = words[0]
+    last_name = words[email_index - 1]
+    email = words[email_index]
+    cleaned_entry = f"{first_name} {last_name} {email}"
+    return cleaned_entry
+
+# Function to clean the CEO name, removing any apostrophes and everything after
+def clean_ceo_name(ceo_name):
+    # Remove apostrophes and everything after
+    ceo_name = ceo_name.split("'")[0].strip()
+    # Split the name into words and take only the first and last names
+    name_parts = ceo_name.split()
+    if len(name_parts) > 2:
+        ceo_name = f"{name_parts[0]} {name_parts[-1]}"
+    return ceo_name
 
 # Function to format output for each entry
 def format_output(ceo_name, entry):
-    return f"{ceo_name}\n{entry}\n\n"
-
+    ceo_name = clean_ceo_name(ceo_name)
+    cleaned_entry = clean_entry(entry)
+    domain = get_domain_from_email(extract_emails(entry)[0])
+    return f"{ceo_name}\n{cleaned_entry}\n\n"
 
 # Function to read API keys and search engine IDs from file
 def read_api_keys(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
-
-    # Split the lines into pairs
     pairs = [(lines[i].strip(), lines[i + 1].strip()) for i in range(0, len(lines), 2)]
     return pairs
-
 
 # Example usage
 file_path = 'entry.txt'
 output_file = 'output.txt'
 api_keys_file = 'api_keys.txt'
-counter = 0
 
 # Extract entries from file
 entries = extract_entries_from_file(file_path)
@@ -79,7 +95,6 @@ api_pair_index = 0
 with open(output_file, 'w') as file_out:
     # Iterate over each entry
     for entry in entries:
-        counter += 1
         emails = extract_emails(entry)
         if emails:
             domain = get_domain_from_email(emails[0])
@@ -102,5 +117,3 @@ with open(output_file, 'w') as file_out:
 
             # Increment the search count
             search_count += 1
-
-print(counter)
