@@ -71,7 +71,7 @@ def format_output(ceo_name, entry):
 
 # Function to read API keys and search engine IDs from file
 def read_api_keys(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
     pairs = [(lines[i].strip(), lines[i + 1].strip()) for i in range(0, len(lines), 2)]
     return pairs
@@ -92,7 +92,7 @@ search_count = 0
 api_pair_index = 0
 
 # Open output file for writing
-with open(output_file, 'w') as file_out:
+with open(output_file, 'w', encoding='utf-8') as file_out:
     # Iterate over each entry
     for entry in entries:
         emails = extract_emails(entry)
